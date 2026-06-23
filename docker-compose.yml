@@ -1,0 +1,74 @@
+# VinylVault: 3-service orchestration
+# Lectures reference: KIII-03 (Docker Orchestration)
+#
+# Services:
+#   postgres - database with persistent storage
+#   backend  - Spring Boot API
+#   frontend - React SPA served via nginx
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vinylvault-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - vinyl-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "5432:5432"
+
+  backend:
+    image: anikaristevska1/vinylvault-backend:${BACKEND_IMAGE_TAG}
+    container_name: vinylvault-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
+      SPRING_PROFILES_ACTIVE: docker
+    volumes:
+      - backend-uploads:/app/uploads
+    networks:
+      - vinyl-network
+    ports:
+      - "8080:8080"
+
+  frontend:
+    image: anikaristevska1/vinylvault-frontend:${FRONTEND_IMAGE_TAG}
+    container_name: vinylvault-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - vinyl-network
+    ports:
+      - "80:80"
+
+# Named volumes for data persistence
+volumes:
+  postgres-data:
+    name: vinylvault-postgres-data
+  backend-uploads:
+    name: vinylvault-backend-uploads
+
+# Isolated network for service-to-service communication
+networks:
+  vinyl-network:
+    name: vinylvault-network
+    driver: bridge

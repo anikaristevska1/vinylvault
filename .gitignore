@@ -1,0 +1,26 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Backend
+backend/target/
+backend/.mvn/
+backend/!.mvn/wrapper/maven-wrapper.jar
+backend/HELP.md
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+Thumbs.db
+
+# Uploads (local development)
+uploads/

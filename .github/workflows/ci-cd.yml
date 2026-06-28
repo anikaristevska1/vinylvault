@@ -24,15 +24,15 @@ on:
 
 env:
   REGISTRY: docker.io
-  BACKEND_IMAGE: anikaristevska1/vinylvault-backend
-  FRONTEND_IMAGE: anikaristevska1/vinylvault-frontend
+  BACKEND_IMAGE: anikaristevska/vinylvault-backend
+  FRONTEND_IMAGE: anikaristevska/vinylvault-frontend
 
 jobs:
   # ===== JOB 1: Lint Code =====
   lint:
     name: Lint Code Base
     runs-on: ubuntu-latest
-    continue-on-error: true  # Lint findings are informational, don't block pipeline
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -41,14 +41,17 @@ jobs:
 
       - name: Run Super-Linter
         uses: super-linter/super-linter@v6
+        continue-on-error: true
         env:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_ALL_CODEBASE: false
+
           # Only validate infrastructure-as-code files
           VALIDATE_YAML: true
           VALIDATE_DOCKERFILE_HADOLINT: true
-          # Disable language-specific linters (handled by Maven/npm in tests)
+
+          # Disable language-specific linters
           VALIDATE_JAVA: false
           VALIDATE_JAVASCRIPT_ES: false
           VALIDATE_JAVASCRIPT_STANDARD: false
@@ -65,6 +68,7 @@ jobs:
   test-backend:
     name: Test Backend (Maven)
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -72,9 +76,9 @@ jobs:
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '21'
-          cache: 'maven'
+          cache: maven
 
       - name: Verify backend build
         working-directory: ./backend
@@ -84,6 +88,7 @@ jobs:
   test-frontend:
     name: Test Frontend (npm)
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -92,7 +97,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
@@ -104,12 +109,15 @@ jobs:
         run: npm run build
 
   # ===== JOB 4: Build & Push Docker images =====
-  # Only runs on push to main/production (not on PRs or develop)
+  # Only runs on push to main/production, not on PRs, test, or develop
   build-and-push:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
+    needs:
+      - test-backend
+      - test-frontend
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production')
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
